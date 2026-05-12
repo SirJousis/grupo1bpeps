@@ -1,0 +1,12 @@
+Flask
+flask-cors
+python-dotenv
+Werkzeug
+pymysql
+jsonify
+selenium
+flask-limiter
+pyotp
+qrcode
+pillow
+bleach

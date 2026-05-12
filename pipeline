@@ -1,0 +1,353 @@
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'IMAGE_TAG_PYTHON', defaultValue: '', description: 'Tag imagen Docker python')
+        string(name: 'IMAGE_TAG_WAF', defaultValue: '', description: 'Tag imagen Docker waf')
+    } //parametros que pide al ejecutar
+
+    environment {
+        DOCKER_IMAGE_PYTHON = "sirjousis/peps"
+        DOCKER_IMAGE_WAF    = "fernipeps/pepsapachewaf"
+        FINAL_IMAGE_TAG_PYTHON = "${params.IMAGE_TAG_PYTHON}"
+        FINAL_IMAGE_TAG_WAF    = "${params.IMAGE_TAG_WAF}"
+        PYTHON_IMAGE = "python:3.11-slim"
+    }
+    stages {
+        stage('Build Python Image') {
+            steps {
+                sh '''
+                docker build -t $DOCKER_IMAGE_PYTHON:$FINAL_IMAGE_TAG_PYTHON .
+                docker run -p 5000:5000 sirjousis/peps:2                '''
+            }
+        }
+
+        stage('Checkout') {
+            steps {
+                git url: 'https://github.com/grupo1BPEPS/peps-team.git',
+                    branch: 'master',
+                    credentialsId: 'GitHub'
+            }
+        }
+
+        stage('Unit Tests') {
+    agent {
+        docker {
+            image "${PYTHON_IMAGE}"
+            args '-u root'
+            reuseNode true //correr en el mismo nodo de jenkins siempre
+        }
+    }
+
+    steps {
+        sh '''
+        apt-get update
+        apt-get install -y chromium
+
+        python -m venv venv
+        . venv/bin/activate
+
+        pip install --no-cache-dir pytest pytest-cov selenium webdriver-manager
+
+        export PYTHONPATH=$WORKSPACE
+
+        pytest tests/unit \
+            --cov=api/web \
+            --cov-fail-under=1 \
+            --junitxml=pytest_results.xml
+        '''
+    }
+
+    post {
+        always {
+            junit 'pytest_results.xml' //lee y publica los resultados de las pruebas enXML
+        }
+    }
+}
+
+        stage('Static Analysis') {
+
+            parallel {
+
+                stage('Detect Secrets') {
+                    agent {
+                        docker {
+                            image "${PYTHON_IMAGE}"
+                            reuseNode true
+                        }
+                    }
+
+                    steps {
+                        sh '''
+                        pip install detect-secrets
+                        mkdir -p reports
+
+                        detect-secrets scan . --all-files \
+                        > reports/detect-secrets.json
+                        '''
+                    }
+
+                    post {
+                        always {
+                            archiveArtifacts artifacts: 'reports/detect-secrets.json'
+                        }
+                    }
+                }
+
+                stage('SonarQube') {
+                    agent {
+                        docker {
+                            image 'sonarsource/sonar-scanner-cli'
+                            reuseNode true
+                        }
+                    }
+
+                    steps {
+                        withSonarQubeEnv('sonarqube') {
+                            sh '''
+                            sonar-scanner \
+                              -Dsonar.projectKey=peps-team \
+                              -Dsonar.sources=. \
+                              -Dsonar.python.version=3.11
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('IaC Security - Checkov') {
+
+            agent {
+                docker {
+                    image 'bridgecrew/checkov'
+                    args '--entrypoint=""'
+                    reuseNode true
+                }
+            }
+
+            steps {
+                sh '''
+                mkdir -p reports
+
+                checkov \
+                  -d . \
+                  --framework dockerfile,kubernetes \
+                  -o junitxml \
+                  --output-file-path reports \
+                  --soft-fail
+                '''
+            }
+
+            post {
+                always {
+                    junit allowEmptyResults: true, testResults: 'reports/results_junitxml.xml'
+                    archiveArtifacts artifacts: 'reports/results_junitxml.xml'
+                }
+            }
+        }
+
+        stage('SCA - OWASP Dependency Check') {
+
+            environment {
+                NVD_KEY = credentials('NVD_API_KEY')
+            }
+
+            agent {
+                docker {
+                    image 'owasp/dependency-check'
+                    args '--entrypoint="" -u root -v /var/jenkins_home/dependency-check:/usr/share/dependency-check/data'
+                    reuseNode true
+                }
+            }
+
+            steps {
+                sh '''
+                /usr/share/dependency-check/bin/dependency-check.sh \
+                    --project "peps-team" \
+                    --scan . \
+                    --format JSON \
+                    --format HTML \
+                    --out reports \
+                    --failOnCVSS 7 \
+                    --nvdApiKey $NVD_KEY
+                '''
+            }
+
+            post {
+                always {
+                    archiveArtifacts artifacts: 'reports/*'
+                }
+            }
+        }
+
+        stage('Docker Login') {
+
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'DockerHub',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+
+                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                }
+            }
+        }
+
+       // stage('Build Docker Python') {
+
+        //    when { expression { params.IMAGE_TAG_PYTHON?.trim() } }
+
+        //    steps {
+        //        script {
+        //            dockerImagePython = docker.build(
+        //                "${DOCKER_IMAGE_PYTHON}:${FINAL_IMAGE_TAG_PYTHON}",
+        //                "-f Dockerfile ."
+        //            )
+        //        }
+        //    }
+        //}
+
+        //stage('Push Docker Python') {
+
+        //    when { expression { params.IMAGE_TAG_PYTHON?.trim() } }
+
+        //    steps {
+        //        script {
+        //            dockerImagePython.push()
+        //        }
+        //    }
+        //}
+
+        stage('Build Docker WAF') {
+
+            when { expression { params.IMAGE_TAG_WAF?.trim() } }
+
+            steps {
+                script {
+                    dockerImageWaf = docker.build(
+                        "${DOCKER_IMAGE_WAF}:${FINAL_IMAGE_TAG_WAF}",
+                        "-f waf/Dockerfile waf"
+                    )
+                }
+            }
+        }
+
+        stage('Push Docker WAF') {
+
+            when { expression { params.IMAGE_TAG_WAF?.trim() } }
+
+            steps {
+                script {
+                    dockerImageWaf.push()
+                }
+            }
+        }
+        stage('Levantar con Secretos') {
+    steps {
+        withCredentials([file(credentialsId: 'archivo-env-casa', variable: 'ENV_FILE')]) {
+            sh '''
+                cp \$ENV_FILE .env
+                docker compose down
+                docker compose up -d --build
+            '''
+        }
+    }
+}
+
+        stage('E2E Test') {
+
+    agent {
+        docker {
+            image 'selenium/standalone-chrome:latest'
+            reuseNode true
+        }
+    }
+
+    steps {
+        sh '''
+        which chromedriver
+        sudo apt-get install -y libnss3 libxss1 libasound2.
+        pip install pytest selenium webdriver-manager
+
+        pytest tests/e2e \
+            --junitxml=e2e_results.xml
+        '''
+    }
+
+    post {
+        always {
+            junit 'e2e_results.xml'
+        }
+    }
+}
+
+        stage('DAST - Nikto Scan') {
+
+    steps {
+        sh '''
+        docker run --rm \
+            -u 0 \
+            -v $(pwd)/reports:/reports \
+            sullo/nikto \
+            -h http://10.227.87.81:6101/ \
+            -Display V \
+            -Format json \
+            -output /reports/nikto_report
+        '''
+    }
+
+    post {
+        always {
+            archiveArtifacts artifacts: 'reports/*'
+        }
+    }
+}
+
+        stage('Cleanup') {
+
+            steps {
+                sh '''
+                docker compose down
+                docker logout || true
+                '''
+            }
+        }
+    }
+
+    post {
+
+        success {
+            emailext(
+                to: 'josias.gonzalez1@educa.madrid.org',
+                subject: "SUCCESS: ${currentBuild.fullDisplayName}",
+                body: """
+Pipeline ejecutado correctamente
+
+Job: ${env.JOB_NAME}
+Build: ${env.BUILD_NUMBER}
+Resultado: ${currentBuild.result}
+
+${env.BUILD_URL}
+"""
+            )
+        }
+
+        failure {
+            emailext(
+                to: 'josias.gonzalez1@educa.madrid.org',
+                subject: "FAILED: ${currentBuild.fullDisplayName}",
+                body: """
+Pipeline fallido
+
+Job: ${env.JOB_NAME}
+Build: ${env.BUILD_NUMBER}
+
+Revisar:
+${env.BUILD_URL}
+"""
+            )
+        }
+    }
+}

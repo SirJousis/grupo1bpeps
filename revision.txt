@@ -1,0 +1,9 @@
+1) Las variables de entorno son sacadas del .env con el docker-compose - OK
+2) Cualquier archivo que no se utlice
+3) Tras la revisión, creo que todas las consultas SQL en uso están parametrizadas
+4) Importado bleach y html
+MODIFICACIONES
+- before_request que limpia json dentro de create_app()
+- request.cleaned_json en /registro, /login y /verify_otp
+-  api/web/controlador_rutinas.py -> Sanitizado nombres de los dicts devueltos
+- apu/web/controlador_ficheros.py -> Valida extension, MIME y tamaño antes de guardar. Sanitiza nombre original en la salida

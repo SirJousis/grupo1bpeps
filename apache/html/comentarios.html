@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Comentarios de Rutinas</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f8;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background-color: #1f2933;
+            color: white;
+            padding: 15px;
+            text-align: center;
+        }
+        main {
+            max-width: 800px;
+            margin: 30px auto;
+            background: white;
+            padding: 25px;
+            border-radius: 6px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h2 {
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+        label {
+            display: block;
+            margin-top: 15px;
+        }
+        input, select, button {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+        }
+        button {
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        button:hover {
+            background-color: #1e40af;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Comentarios por Rutina</h1>
+
+{% for rutina in rutinas %}
+    <section class="rutina">
+        <h2>{{ rutina.nombre }}</h2>
+
+        {% if rutina.descripcion %}
+            <p class="descripcion">{{ rutina.descripcion }}</p>
+        {% endif %}
+
+        {% if rutina.comentarios %}
+            <ul class="comentarios">
+                {% for comentario in rutina.comentarios %}
+                    <li>
+                        <strong>{{ comentario.username }}</strong>
+                        <span class="fecha">{{ comentario.fecha }}</span>
+                        <p>{{ comentario.contenido }}</p>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="sin-comentarios">Esta rutina no tiene comentarios.</p>
+        {% endif %}
+    </section>
+{% endfor %}
+
+</body>
+</html>

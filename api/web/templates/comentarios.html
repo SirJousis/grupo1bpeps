@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Comentarios de Rutinas</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/comentarios.css') }}">
+</head>
+<body>
+
+<h1>Comentarios por Rutina</h1>
+
+{% for rutina in rutinas %}
+    <section class="rutina">
+        <h2>{{ rutina.nombre }}</h2>
+
+        {% if rutina.descripcion %}
+            <p class="descripcion">{{ rutina.descripcion }}</p>
+        {% endif %}
+
+        {% if rutina.comentarios %}
+            <ul class="comentarios">
+                {% for comentario in rutina.comentarios %}
+                    <li>
+                        <strong>{{ comentario.username }}</strong>
+                        <span class="fecha">{{ comentario.fecha }}</span>
+                        <p>{{ comentario.contenido }}</p>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="sin-comentarios">Esta rutina no tiene comentarios.</p>
+        {% endif %}
+    </section>
+{% endfor %}
+
+</body>
+</html>

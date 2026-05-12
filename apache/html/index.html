@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Gym Routine Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f8;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background-color: #1f2933;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            position: relative;
+        }
+        main {
+            max-width: 800px;
+            margin: 30px auto;
+            background: white;
+            padding: 25px;
+            border-radius: 6px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h2 {
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+        label {
+            display: block;
+            margin-top: 15px;
+        }
+        input, select, button {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+        }
+        button {
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        button:hover {
+            background-color: #1e40af;
+        }
+        .hidden { display: none; }
+        .rutina {
+            margin-top: 20px;
+            background: #f9fafb;
+            padding: 15px;
+            border: 1px solid #ddd;
+        }
+        .btn-perfil {
+            position: fixed;
+            top: 15px;
+            right: 20px;
+
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 4px;
+
+            font-size: 14px;
+            cursor: pointer;
+
+            z-index: 1000;
+            display: none;
+        }
+
+        .btn-perfil:hover {
+            background-color: #1e40af;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Gym Routine Generator</h1>
+</header>
+
+<main>
+
+<!-- LOGIN -->
+<section id="login-section">
+    <h2>Login</h2>
+    <label>Usuario</label>
+    <input type="text" id="username">
+    <label>Contraseña</label>
+    <input type="password" id="password">
+    <button onclick="login()">Entrar</button>
+    <button onclick="showRegister()">Crear cuenta</button>
+</section>
+
+<!-- REGISTER -->
+<section id="register-section" class="hidden">
+    <h2>Registro</h2>
+    <label>Usuario</label>
+    <input type="text" id="username_register">
+    <label>Contraseña</label>
+    <input type="password" id="password_register">
+    <button onclick="register()">Registrarse</button>
+    <button onclick="showLogin()">Volver</button>
+</section>
+<!-- QR OTP SETUP (tras registro) -->
+<section id="otp-setup-section" class="hidden">
+    <h2>Configura tu autenticador</h2>
+    <p>Escanea este QR con Google Authenticator o Authy:</p>
+    <img id="otp-qr-img" src="" alt="QR Code" style="display:block; margin:20px auto; max-width:250px;">
+    <p style="color:#555;">Una vez escaneado, ya puedes iniciar sesión normalmente.</p>
+    <button onclick="showLogin()">Ir al login</button>
+</section>
+
+<!-- OTP LOGIN (tras login con contraseña) -->
+<section id="otp-login-section" class="hidden">
+    <h2>Verificación en dos pasos</h2>
+    <p>Introduce el código de tu autenticador:</p>
+    <input type="text" id="otp-login-token" maxlength="6" placeholder="123456">
+    <button onclick="verificarOtpLogin()">Verificar</button>
+</section>
+
+
+<!-- BUSCAR RUTINAS -->
+<section id="generar-rutina-section" class="hidden">
+    <h2>Buscar rutina</h2>
+
+    <label>Objetivo</label>
+    <select id="objetivo">
+        <option value="fuerza">Fuerza</option>
+        <option value="cardio">Cardio</option>
+        <option value="hibrido">Híbrido</option>
+    </select>
+
+    <label>Nivel</label>
+    <select id="nivel">
+        <option value="basico">Básico</option>
+        <option value="intermedio">Intermedio</option>
+        <option value="avanzado">Avanzado</option>
+    </select>
+
+    <label>Días</label>
+    <input type="number" id="dias" min="1" max="5">
+
+    <button onclick="buscarRutinas()">Buscar rutinas</button>
+     <button onclick="irGaleria()" class="btn-gallery">Mis Archivos / Galería</button>
+    <button onclick="verMisRutinas()">Mis rutinas</button>
+    <button onclick="logout()">Cerrar sesión</button>
+    <button class="btn-perfil hidden" onclick="irPerfil()">
+    Mi perfil
+    </button>
+
+    <div id="listado-rutinas" class="rutina"></div>
+    
+</section>
+
+
+
+<!-- MOSTRAR RUTINA -->
+<section id="mostrar-rutina-section" class="hidden">
+    <button onclick="irHome()">Volver al Inicio</button>
+    <h2>Rutina</h2>
+
+    <table border="1" cellpadding="8" cellspacing="0">
+        <thead>
+            <tr>
+                <th>Día</th>
+                <th>Ejercicio</th>
+                <th>Series</th>
+                <th>Reps / Tiempo</th>
+            </tr>
+        </thead>
+        <tbody id="tabla_rutina"></tbody>
+    </table>
+
+    <hr>
+    <div id="bloque-fotos-rutina" class="hidden">
+
+        <h3>Fotos de la rutina</h3>
+
+            <input type="file" id="fotoRutina">
+            <button onclick="subirFotoRutina()">Subir foto</button>
+
+        <div id="galeria-rutina"></div>
+
+        <br>
+
+        <button onclick="guardarRutina()">Guardar rutina</button>
+        <button onclick="volverBusqueda()">Volver</button>
+        <button onclick="logout()">Cerrar sesión</button>
+</section>
+
+<!-- MIS RUTINAS -->
+<section id="mis-rutinas-section" class="hidden">
+    <h2>Mis rutinas</h2>
+
+    <div id="listado-mis-rutinas" class="rutina"></div>
+
+    <button onclick="volverBusqueda()">Volver</button>
+    <button onclick="logout()">Cerrar sesión</button>
+</section>
+
+</main>
+
+<script>
+/* =======================
+   ESTADO GLOBAL
+======================= */
+const SECTIONS = [
+    "login-section",
+    "register-section",
+    "otp-setup-section",
+    "otp-login-section",
+    "generar-rutina-section",
+    "mostrar-rutina-section",
+    "mis-rutinas-section"
+];
+
+
+let rutinasDisponibles = [];
+let rutinaSeleccionadaId = null;
+
+/* =======================
+   NAVEGACIÓN CENTRAL
+======================= */
+function showSection(id) {
+    SECTIONS.forEach(secId => {
+        const el = document.getElementById(secId);
+        if (!el) return;
+        el.classList.toggle("hidden", secId !== id);
+    });
+}
+
+/* =======================
+   AUTENTICACIÓN
+======================= */
+function login() {
+    fetch("/api/auth/login", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            username: document.getElementById("username").value,
+            password: document.getElementById("password").value
+        })
+    })
+    .then(r => r.json().then(data => ({ ok: r.ok, data })))
+    .then(({ ok, data }) => {
+        if (!ok) { alert(data.error || "Error al iniciar sesión"); return; }
+        if (data.status === "otp_required") {
+            showSection("otp-login-section");
+        } else {
+            showSection("generar-rutina-section");
+        }
+    });
+}
+
+function verificarOtpLogin() {
+    fetch("/api/auth/verify-otp", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: document.getElementById("otp-login-token").value })
+    })
+    .then(r => r.json().then(data => ({ ok: r.ok, data })))
+    .then(({ ok, data }) => {
+        if (!ok) { alert(data.error || "Código incorrecto"); return; }
+        showSection("generar-rutina-section");
+    });
+}
+
+function register() {
+    fetch("/api/auth/registro", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            username: document.getElementById("username_register").value,
+            password: document.getElementById("password_register").value
+        })
+    })
+    .then(r => r.json().then(data => ({ ok: r.ok, data })))
+    .then(({ ok, data }) => {
+        if (!ok) { alert(data.error || "Error en el registro"); return; }
+        document.getElementById("otp-qr-img").src = "data:image/png;base64," + data.qr;
+        showSection("otp-setup-section");
+    });
+}
+
+
+function logout() {
+    fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include"
+    })
+    .then(() => {
+        rutinasDisponibles = [];
+        rutinaSeleccionadaId = null;
+        document.getElementById("listado-rutinas").innerHTML = "";
+        document.getElementById("listado-mis-rutinas").innerHTML = "";
+        document.getElementById("tabla_rutina").innerHTML = "";
+        showSection("login-section");
+        const btnPerfil = document.querySelector(".btn-perfil");
+        if (btnPerfil) btnPerfil.classList.add("hidden");
+    });
+}
+
+/* =======================
+   RUTINAS BASE
+======================= */
+function buscarRutinas() {
+    fetch(`/api/rutinas/base?objetivo=${objetivo.value}&nivel=${nivel.value}&dias=${dias.value}`)
+        .then(r => r.json())
+        .then(data => {
+            rutinasDisponibles = data;
+            pintarListadoRutinas(data);
+        });
+}
+
+function pintarListadoRutinas(rutinas) {
+    const cont = document.getElementById("listado-rutinas");
+    cont.innerHTML = "";
+
+    if (!rutinas.length) {
+        cont.innerHTML = "<p>No hay rutinas disponibles</p>";
+        return;
+    }
+
+    rutinas.forEach(r => {
+        cont.innerHTML += `
+            <div>
+                <strong>${r.nombre}</strong><br>
+                <button onclick="verRutina(${r.id})">Ver</button>
+                <button onclick="guardarRutina(${r.id})">Guardar</button>
+            </div>
+        `;
+    });
+}
+
+function verRutina(id) {
+    const rutina = rutinasDisponibles.find(r => r.id === id);
+    if (!rutina) return;
+
+    rutinaUsuarioActual = null;
+
+    pintarRutina(rutina.rutina_json);
+
+    document
+      .getElementById("bloque-fotos-rutina")
+      .classList.add("hidden");
+
+    showSection("mostrar-rutina-section");
+}
+
+
+function pintarRutina(rutina) {
+    const tbody = document.getElementById("tabla_rutina");
+    tbody.innerHTML = "";
+
+    rutina.dias.forEach(dia => {
+        dia.ejercicios.forEach(ej => {
+            tbody.innerHTML += `
+                <tr>
+                    <td>Día ${dia.dia}</td>
+                    <td>${ej.nombre}</td>
+                    <td>${ej.series}</td>
+                    <td>${ej.reps}</td>
+                </tr>`;
+        });
+    });
+}
+
+function guardarRutina(id = rutinaSeleccionadaId) {
+    fetch("/api/rutinas/usuario", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rutina_base_id: id })
+    })
+    .then(() => alert("Rutina guardada"));
+}
+
+/* =======================
+   MIS RUTINAS
+======================= */
+function verMisRutinas() {
+    fetch("/api/rutinas/usuario", { credentials: "include" })
+        .then(r => r.json())
+        .then(data => {
+            pintarMisRutinas(data);
+            showSection("mis-rutinas-section");
+        });
+}
+
+function pintarMisRutinas(rutinas) {
+    const cont = document.getElementById("listado-mis-rutinas");
+    cont.innerHTML = "";
+
+    if (!rutinas.length) {
+        cont.innerHTML = "<p>No tienes rutinas guardadas</p>";
+        return;
+    }
+
+    rutinas.forEach(r => {
+        cont.innerHTML += `
+            <div>
+                <strong>${r.nombre}</strong><br>
+                <small>${new Date(r.created_at).toLocaleDateString()}</small><br>
+                <button onclick="verRutinaGuardada(${r.rutina_usuario_id})">Ver</button>
+            </div>
+        `;
+    });
+}
+
+/* =======================
+   ARCHIVOS
+======================= */
+
+function irGaleria() {
+    window.location.href = "/api/ficheros/galeria";
+}
+
+/* =======================
+   FOTOS POR RUTINA
+======================= */
+
+let rutinaUsuarioActual = null;
+
+/* cuando ves una rutina guardada */
+function verRutinaGuardada(id) {
+    fetch("/api/rutinas/usuario", { credentials: "include" })
+        .then(r => r.json())
+        .then(rutinas => {
+            const rutina = rutinas.find(r => r.rutina_usuario_id === id);
+            if (!rutina) return;
+
+            rutinaUsuarioActual = id;
+            pintarRutina(rutina.rutina_json);
+            cargarFotosRutina(id);
+            showSection("mostrar-rutina-section");
+        });
+}
+
+/* subir foto */
+function subirFotoRutina() {
+    if (!rutinaUsuarioActual) {
+        alert("No hay rutina seleccionada");
+        return;
+    }
+
+    const file = document.getElementById("fotoRutina").files[0];
+    if (!file) {
+        alert("Selecciona una imagen");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("archivo", file);
+
+    fetch(`/api/ficheros/subir/${rutinaUsuarioActual}`, {
+        method: "POST",
+        body: formData,
+        credentials: "include"
+    })
+    .then(res => res.ok ? cargarFotosRutina(rutinaUsuarioActual) : alert("Error al subir"));
+}
+
+/* cargar galería */
+function cargarFotosRutina(rutinaId) {
+    fetch(`/api/ficheros/rutina/${rutinaId}`, { credentials: "include" })
+        .then(r => r.json())
+        .then(data => {
+            const cont = document.getElementById("galeria-rutina");
+            cont.innerHTML = "";
+
+            if (!data.length) {
+                cont.innerHTML = "<p>No hay fotos aún</p>";
+                return;
+            }
+
+            data.forEach(f => {
+                cont.innerHTML += `
+                    <img 
+                        src="/api/ficheros/ver/${f.nombre_guardado}"
+                        style="width:120px;height:120px;object-fit:cover;border-radius:4px;"
+                    >
+                `;
+            });
+        });
+}
+
+
+/* =======================
+   UTILIDADES
+======================= */
+function showLogin() { showSection("login-section"); }
+function showRegister() { showSection("register-section"); }
+function volverBusqueda() { showSection("generar-rutina-section"); }
+
+document.addEventListener("DOMContentLoaded", () => {
+    fetch("/api/auth/check", { credentials: "include" })
+        .then(r => {
+            if (r.ok) {
+                showSection("generar-rutina-section");
+                const btnPerfil = document.querySelector(".btn-perfil");
+                if (btnPerfil) btnPerfil.style.remove("hidden");
+
+            } else {
+                showSection("login-section");
+            } 
+        });
+    });
+
+function irHome() {
+    window.location.href = "/";
+}
+function irPerfil() {
+    window.location.href = "/miperfil.html";
+}
+
+</script>
+
+</body>
+</html>

