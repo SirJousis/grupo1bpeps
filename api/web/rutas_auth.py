@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, session, make_response
 import controlador_usuarios
 import re
 from app import limiter
+from pymysql.err import IntegrityError
 from otpgen import verificar_otp
 from funciones_auxiliares import sanitize_field, prepare_response_extra_headers
 
@@ -50,11 +51,14 @@ def registro():
         })
         response.headers.extend(prepare_response_extra_headers(True))
         return response, 201
+    except IntegrityError:
+        response = make_response(jsonify({"error": "El usuario ya existe"}), 409)
+        response.headers.extend(prepare_response_extra_headers(True))
+        return response
     except Exception as e:
-        print("Error en registro:", e)
-    response = make_response(jsonify({"error": "El usuario ya existe"}), 409)
-    response.headers.extend(prepare_response_extra_headers(True))
-    return response
+        print("Error inesperado en registro:", e)
+        response = make_response(jsonify({"error": "Error interno al registrar usuario"}), 500)
+        response.headers.extend(prepare_response_extra_headers(True))
 # ========== LOGIN ==========
 @bp.route("/login", methods=["POST"])
 @limiter.limit("5 per minute")
