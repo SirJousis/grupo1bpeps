@@ -1,56 +1,34 @@
-#FROM httpd:2.4-alpine
-FROM httpd:2.4
-# Actualizar paquetes
-RUN apt-get update && apt-get upgrade -y
+FROM debian:bookworm-slim
 
-# Instalar ModSecurity y dependencias
-RUN apt-get install -y \
-    libapache2-mod-security2 \
-    modsecurity-crs \
-    curl
+RUN apt-get update && apt-get upgrade -y && \
+    apt-get install -y \
+        apache2 \
+        libapache2-mod-security2 \
+        modsecurity-crs \
+        curl && \
+    rm -rf /var/lib/apt/lists/*
 
-# Crear directorios necesarios
+RUN a2enmod security2 proxy proxy_http headers
+
+RUN cp /etc/modsecurity/modsecurity.conf-recommended /etc/modsecurity/modsecurity.conf && \
+    sed -i 's/SecRuleEngine DetectionOnly/SecRuleEngine On/' /etc/modsecurity/modsecurity.conf && \
+    sed -i 's|SecAuditLog /var/log/modsec_audit.log|SecAuditLog /var/log/modsecurity/audit.log|' \
+        /etc/modsecurity/modsecurity.conf
+
 RUN mkdir -p /var/log/modsecurity
 
-# Activar módulo ModSecurity
-RUN echo "LoadModule security2_module /usr/lib/apache2/modules/mod_security2.so" \
->> /usr/local/apache2/conf/httpd.conf
+RUN sed -i \
+    -e 's/ServerTokens OS/ServerTokens Prod/' \
+    -e 's/ServerSignature On/ServerSignature Off/' \
+    /etc/apache2/conf-available/security.conf
 
-# Configuración base ModSecurity
-RUN echo "Include conf/extra/modsecurity.conf" \
-    >> /usr/local/apache2/conf/httpd.conf
+RUN ln -sf /proc/self/fd/1 /var/log/apache2/access.log && \
+    ln -sf /proc/self/fd/2 /var/log/apache2/error.log && \
+    ln -sf /proc/self/fd/2 /var/log/apache2/other_vhosts_access.log
 
-# Crear configuración ModSecurity
-RUN mkdir -p /usr/local/apache2/conf/extra
-
-RUN cat > /usr/local/apache2/conf/extra/modsecurity.conf <<'EOF'
-<IfModule security2_module>
-
-    SecRuleEngine On
-
-    SecRequestBodyAccess On
-    SecResponseBodyAccess Off
-
-    SecAuditEngine RelevantOnly
-    SecAuditLog /var/log/modsecurity/audit.log
-
-    Include /etc/modsecurity-crs/crs-setup.conf
-    Include /etc/modsecurity-crs/rules/*.conf
-
-</IfModule>
-EOF
-
-# Copiar virtualhost
-COPY demo.apache.conf /usr/local/apache2/conf/demo.apache.conf
-
-# Copiar HTML
-COPY ./html /var/www/html
-
-# Permisos
+COPY demo.apache.conf /etc/apache2/sites-available/000-default.conf
+COPY ./html /var/www/html/
 RUN chmod 644 /var/www/html/*.html
 
-# Incluir vhost
-RUN echo "Include /usr/local/apache2/conf/demo.apache.conf" \
-    >> /usr/local/apache2/conf/httpd.conf
-
 EXPOSE 80
+CMD ["apache2ctl", "-D", "FOREGROUND"]
