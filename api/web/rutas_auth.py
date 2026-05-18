@@ -59,6 +59,7 @@ def registro():
         print("Error inesperado en registro:", e)
         response = make_response(jsonify({"error": "Error interno al registrar usuario"}), 500)
         response.headers.extend(prepare_response_extra_headers(True))
+        return response
 # ========== LOGIN ==========
 @bp.route("/login", methods=["POST"])
 @limiter.limit("5 per minute")
