@@ -82,7 +82,7 @@ def cambiar_password():
 
     if not request.is_json:
         return jsonify({"error": "Bad request"}), 400
-    data = sanitize_field(request.get_json())
+    data = request.get_json()
     actual = data.get("password_actual")
     nueva = data.get("password_nueva")
 

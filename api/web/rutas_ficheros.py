@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify, session, current_app, send_from_directory, render_template, make_response
+import re
 import controlador_ficheros
 from funciones_auxiliares import prepare_response_extra_headers
 
@@ -58,9 +59,13 @@ def ver_archivo(nombre_archivo):
         response.headers.extend(prepare_response_extra_headers(True))
         return response
 
+    if not re.match(r'^[a-zA-Z0-9._-]+$', nombre_archivo):
+        response = make_response(jsonify({"error": "Nombre de archivo inválido"}), 400)
+        response.headers.extend(prepare_response_extra_headers(True))
+        return response
+
     user_id = session['id_usuario']
 
-    # Seguridad mínima (opcional por ahora)
     if not controlador_ficheros.archivo_pertenece_usuario(nombre_archivo, user_id):
         response = make_response(jsonify({"error": "Acceso denegado"}), 403)
         response.headers.extend(prepare_response_extra_headers(True))
