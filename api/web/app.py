@@ -18,8 +18,8 @@ def create_app():
 
     app.config['SECRET_KEY'] = os.getenv("gym_app_secret_key")
     app.config['SESSION_COOKIE_HTTPONLY'] = False
-    app.config['SESSION_COOKIE_SECURE'] = True  
-    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    app.config['SESSION_COOKIE_SECURE'] = True  # solo https
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'# permite get del mismo usuario y peticiones top level, nada de formularios...
     app.permanent_session_lifetime = timedelta(hours=1)
 
     UPLOAD_FOLDER = "/app/uploads"

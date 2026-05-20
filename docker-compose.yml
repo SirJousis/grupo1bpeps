@@ -5,6 +5,7 @@ services:
     container_name: apacheb1
     ports:
       - "6101:80"
+      - "6102:443"
     depends_on:
       - pythonb1
 

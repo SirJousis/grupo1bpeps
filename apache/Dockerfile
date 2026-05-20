@@ -8,7 +8,13 @@ RUN apt-get update && apt-get upgrade -y && \
         curl && \
     rm -rf /var/lib/apt/lists/*
 
-RUN a2enmod security2 proxy proxy_http headers rewrite
+RUN a2enmod security2 proxy proxy_http headers rewrite ssl
+
+# SSL Config
+COPY default-ssl.conf /etc/apache2/sites-available/default-ssl.conf
+COPY server.crt /etc/ssl/certs/server.crt
+COPY server.key /etc/ssl/private/server.key
+RUN a2ensite default-ssl
 
 # Global Apache config
 COPY apache2.conf /etc/apache2/apache2.conf
@@ -43,4 +49,5 @@ RUN ln -sf /proc/self/fd/1 /var/log/apache2/access.log && \
     ln -sf /proc/self/fd/2 /var/log/apache2/other_vhosts_access.log
 
 EXPOSE 80
+EXPOSE 443
 CMD ["apache2ctl", "-D", "FOREGROUND"]
