@@ -1,10 +1,9 @@
 import html
-import bleach
 
 
 def sanitize_field(data):
     if isinstance(data, str):
-        return bleach.clean(html.escape(data))
+        return html.escape(data)
     if isinstance(data, dict):
         return {k: sanitize_field(v) for k, v in data.items()}
     if isinstance(data, list):

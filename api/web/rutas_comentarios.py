@@ -12,9 +12,9 @@ def login():
         response.headers.extend(prepare_response_extra_headers(True))
         return response
 
-    comentario_json = request.cleaned_json()
-    usuario = comentario_json.get('usuario', '')
-    descripcion = comentario_json.get('descripcion', '')
+    comentario_json = request.get_json()
+    usuario = sanitize_field(comentario_json.get('usuario', ''))
+    descripcion = sanitize_field(comentario_json.get('descripcion', ''))
 
     if not usuario or not descripcion:
         response = make_response(jsonify({"status": "Bad request"}), 400)

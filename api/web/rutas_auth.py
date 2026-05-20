@@ -17,7 +17,7 @@ def registro():
         return response
 
     datos = request.get_json()
-    username = datos.get('username')
+    username = sanitize_field(datos.get('username'))
     password = datos.get('password')
 
     # Validar campos obligatorios
@@ -70,7 +70,7 @@ def login():
         return response
 
     login_json = request.get_json()
-    username = login_json.get("username")
+    username = sanitize_field(login_json.get("username"))
     password = login_json.get("password")
 
     if not username or not password:
@@ -114,7 +114,7 @@ def verify_otp():
         return response
 
     data = request.get_json()
-    token = data.get("token", "")
+    token = sanitize_field(data.get("token", ""))
 
     if not re.match(r'^\d{6}$', token):
         response = make_response(jsonify({"error": "Token inválido"}), 400)
